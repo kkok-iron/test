@@ -4,6 +4,16 @@ var shorts = new Youtube();
 
 var limit = 10;  // 출력 갯수
 
+const mysql = require('mysql');  // mysql 모듈 로드
+const conn = mysql.createConnection({  // mysql 접속 설정
+    host: 'kkokiyo-mysql.c1kmsw8s42mh.ap-northeast-2.rds.amazonaws.com',
+    port: '3306',
+    user: 'root',
+    password: 'kky240101!',
+    database: 'kkokiyodb'
+});
+
+
 youtube.setKey('AIzaSyDQYRA4XEY0RX2M1lkyiV_hWwldaZToQGM'); // API 키 입력
 
 //// 검색 옵션 시작
@@ -29,9 +39,14 @@ type	channel, playlist, video	검색 대상 유형 지정
 videoDuration	any, long, medium, short	검색 동영상의 길이 지정
 videoLicense	any, creativeCommon, youtube	검색 동영상의 라이선스 지정
 */
-const videos = [];
 
+var videos = [];
+
+ 
 function crawlYouTubeVideos(keyword) {
+        
+        var values;
+        
         youtube.search(keyword, limit, function (err, result) { 
             if (err) { console.log(err); return; } 
         
@@ -44,14 +59,37 @@ function crawlYouTubeVideos(keyword) {
                 var video_id = it["id"]["videoId"];
                 var url = "https://www.youtube.com/watch?v=" + video_id;
 
-                console.log("title : " + title);
-                console.log("url : " + url);
+              //  console.log("title : " + title);
+              //  console.log("url : " + url);
 
-                //videos.push( [ title, url ]);
+                videos.push( [ url, title ] );
+                
             }
-        });
+            
+            console.log(videos);
 
+            conn.connect(function (err) {
+                if(err) throw err;
+                console.log('connect');
+                
+                var sql = "INSERT INTO content_test (media_url, title) values ?;";
+
+                conn.query(sql, [videos], function(err, result) {
+
+                    if(err) throw err;
+                    console.log("Inserted : " + result.affectedRows);
+
+                });
+        
+            });
+
+            //conn.end();
+        });
+    
+   // console.log(videos);
+   
 }
+
 
 function crawlYouTubeShorts(keyword) {
     shorts.search(keyword, limit, function (err, result) { 
@@ -66,13 +104,23 @@ function crawlYouTubeShorts(keyword) {
             var video_id = it["id"]["videoId"];
             var url = "https://www.youtube.com/shorts/" + video_id;
 
-            console.log("Shorts title : " + title);
-            console.log("Shorts url : " + url);
-
-            //videos.push( [ title, url ]);
+            videos.push( [ video_id, url, title]);
         }
     });
 
+   // console.log(videos);
+
 }
-crawlYouTubeVideos('홈트');
+
+async function crawlYouTube(){
+    try{
+        await crawlYouTubeVideos('홈트');
+        //console.log(videos)
+      } catch(e) {
+        console.log(e)
+      }
+  }
+
+crawlYouTube();
+//crawlYouTubeVideos('홈트');
 //crawlYouTubeShorts('홈트');
